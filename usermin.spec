@@ -7,13 +7,12 @@ Name:		usermin
 Version:	1.300
 Release:	0.1
 License:	Freeware
-######		Unknown group!
-Group:		System/Tools
+Group:		Applications/System
 Source0:	http://www.webmin.com/download/%{name}-%{version}.tar.gz
 # Source0-md5:	d5da4ecbf388b740edc1f25b15ddd39a
-Requires:	%{__perl}
 Requires:	/bin/rm
 Requires:	/bin/sh
+Requires:	perl-base
 Requires:	webserver
 BuildArch:	noarch
 BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
