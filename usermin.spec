@@ -7,35 +7,34 @@ Name:		usermin
 Version:	1.300
 Release:	0.1
 License:	Freeware
+######		Unknown group!
 Group:		System/Tools
 Source0:	http://www.webmin.com/download/%{name}-%{version}.tar.gz
 # Source0-md5:	d5da4ecbf388b740edc1f25b15ddd39a
-Requires:	webserver
+Requires:	%{__perl}
 Requires:	/bin/rm
 Requires:	/bin/sh
-Requires:	/usr/bin/perl
-BuildArch:      noarch
-BuildRoot:      %{tmpdir}/%{name}-%{version}-root-%(id -u -n)
+Requires:	webserver
+BuildArch:	noarch
+BuildRoot:	%{tmpdir}/%{name}-%{version}-root-%(id -u -n)
 
 %define		_libexecdir	%{_libdir}
 
 %description
 A web-based user account administration interface for Unix systems.
 
-After installation, enter the URL http://localhost:20000/ into your
+After installation, enter the URL <http://localhost:20000/> into your
 browser and login as any user on your system.
 
 %description -l pl.UTF-8
 Oparty na WWW interfejs do administrowania kontami użytkowników.
 
 Po zainstalowaniu wystarczy w przeglądarce wpisać URL
-http://localhost:20000/ i zalogować jako dowolny użytkownik.
+<http://localhost:20000/> i zalogować jako dowolny użytkownik.
 
 %prep
 %setup -q
-
-%build
-(find . -name '*.cgi' ; find . -name '*.pl') | perl perlpath.pl %{__perl} -
+find -name '*.cgi' -o -name '*.pl' | %{__perl} perlpath.pl %{__perl} -
 rm -f mount/freebsd-mounts-*
 rm -f mount/openbsd-mounts-*
 chmod -R og-w .
@@ -47,7 +46,7 @@ install -d $RPM_BUILD_ROOT/etc/sysconfig
 install -d $RPM_BUILD_ROOT/etc/rc.d/init.d
 install -d $RPM_BUILD_ROOT/etc/pam.d
 
-cp -rp * $RPM_BUILD_ROOT%{_libexecdir}/usermin
+cp -a * $RPM_BUILD_ROOT%{_libexecdir}/usermin
 cp usermin-daemon $RPM_BUILD_ROOT/etc/sysconfig/usermin
 cp usermin-init $RPM_BUILD_ROOT/etc/rc.d/init.d/usermin
 cp usermin-pam $RPM_BUILD_ROOT/etc/pam.d/usermin
@@ -65,11 +64,13 @@ rm -rf $RPM_BUILD_ROOT
 %config(noreplace) %verify(not md5 mtime size) /etc/pam.d/usermin
 
 %post
+# $inetd never used
 inetd=`grep "^inetd=" %{_sysconfdir}/usermin/miniserv.conf 2>/dev/null | sed -e 's/inetd=//g'`
 if [ "$1" != 1 ]; then
 	# Upgrading the RPM, so stop the old usermin properly
-	if [ "" != "1" ]; then
-		/etc/rc.d/init.d/usermin stop >/dev/null 2>&1
+	# XXX looks wrong, $inetd check or $? should be here instead?
+	if [ "$1" != "1" ]; then
+		/sbin/service usermin stop
 	fi
 fi
 cd %{_libexecdir}/usermin
@@ -87,24 +88,27 @@ noperlpath=1
 nouninstall=1
 nostart=1
 export config_dir var_dir perl autoos port ssl nochown autothird noperlpath nouninstall nostart allow
-./setup.sh >/var/lib/usermin/usermin-setup.out 2>&1
+./setup.sh > /var/lib/usermin/usermin-setup.out 2>&1
 rm -f /var/lock/subsys/usermin
-if [ "" != "1" ]; then
+if [ "$1" != "1" ]; then
 	# XXX: only if it was running before upgrade!
-	#/etc/rc.d/init.d/usermin start >/dev/null 2>&1 </dev/null
+	#/sbin/service usermin start
 fi
-cat >%{_sysconfdir}/usermin/uninstall.sh <<EOFF
+
+# XXX: move uninstall.sh creation to %%install or rather discard
+cat > %{_sysconfdir}/usermin/uninstall.sh <<'EOF'
 #!/bin/sh
 printf "Are you sure you want to uninstall Usermin? (y/n) : "
 read answer
 printf "\n"
-if [ "\$answer" = "y" ]; then
+if [ "$answer" = "y" ]; then
 	echo "Removing usermin RPM .."
 	rpm -e usermin
 	echo "Done!"
 fi
-EOFF
+EOF
 chmod +x %{_sysconfdir}/usermin/uninstall.sh
+
 port=`grep "^port=" %{_sysconfdir}/usermin/miniserv.conf | sed -e 's/port=//g'`
 perl -e 'use Net::SSLeay' >/dev/null 2>/dev/null
 sslmode=0
@@ -123,22 +127,10 @@ echo "as any user on your system."
 
 %preun
 if [ "$1" = 0 ]; then
-	grep root=%{_libexecdir}/usermin %{_sysconfdir}/usermin/miniserv.conf >/dev/null 2>&1
+	grep -q root=%{_libexecdir}/usermin %{_sysconfdir}/usermin/miniserv.conf
 	if [ "$?" = 0 ]; then
 		# RPM is being removed, and no new version of usermin
 		# has taken it's place. Stop the server
-		/etc/rc.d/init.d/usermin stop >/dev/null 2>&1
-		/bin/true
-	fi
-fi
-
-%postun
-if [ "$1" = 0 ]; then
-	grep root=%{_libexecdir}/usermin %{_sysconfdir}/usermin/miniserv.conf >/dev/null 2>&1
-	if [ "$?" = 0 ]; then
-		# RPM is being removed, and no new version of usermin
-		# has taken it's place. Delete the config files
-		# XXX: wrong
-		#rm -rf %{_sysconfdir}/usermin /var/lib/usermin
+		/sbin/service usermin stop || :
 	fi
 fi
