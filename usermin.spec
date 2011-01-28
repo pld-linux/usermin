@@ -10,6 +10,7 @@ License:	Freeware
 Group:		Applications/System
 Source0:	http://www.webmin.com/download/%{name}-%{version}.tar.gz
 # Source0-md5:	d5da4ecbf388b740edc1f25b15ddd39a
+BuildRequires:	perl-base
 Requires:	/bin/rm
 Requires:	/bin/sh
 Requires:	perl-base
@@ -54,13 +55,6 @@ echo usermin >$RPM_BUILD_ROOT%{_libexecdir}/usermin/rpm-name
 
 %clean
 rm -rf $RPM_BUILD_ROOT
-
-%files
-%defattr(644,root,root,755)
-%{_libexecdir}/usermin
-%attr(754,root,root) /etc/rc.d/init.d/usermin
-%config(noreplace) %verify(not md5 mtime size) /etc/sysconfig/usermin
-%config(noreplace) %verify(not md5 mtime size) /etc/pam.d/usermin
 
 %post
 # $inetd never used
@@ -133,3 +127,10 @@ if [ "$1" = 0 ]; then
 		/sbin/service usermin stop || :
 	fi
 fi
+
+%files
+%defattr(644,root,root,755)
+%{_libexecdir}/usermin
+%attr(754,root,root) /etc/rc.d/init.d/usermin
+%config(noreplace) %verify(not md5 mtime size) /etc/sysconfig/usermin
+%config(noreplace) %verify(not md5 mtime size) /etc/pam.d/usermin
